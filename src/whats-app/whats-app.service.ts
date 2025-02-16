@@ -28,10 +28,10 @@ export class WhatsAppService {
   }
 
   async processMessage(from: string, message: any): Promise<void> {
-    console.log(`🤖 Procesando mensaje de ${from}: "${message.Body}"`);
+    console.log(`🤖 Procesando mensaje de ${from}: "${message}"`);
 
     // Obtener el nombre del usuario desde Twilio
-    const userName = message.Body.ProfileName || 'pendiente';
+    const userName = message.ProfileName || 'pendiente';
 
     const reserva = await this.aiService.getReservationDetails(message.Body, userName);
 
