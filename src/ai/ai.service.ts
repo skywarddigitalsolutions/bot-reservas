@@ -19,21 +19,24 @@ export class AiService {
           {
             role: 'system',
             content: `Sos un asistente de reservas automatizado para Bethania Fútbol Club.
-            📍 Ubicación: Humahuaca 4556, C1192 Cdad. Autónoma de Buenos Aires.
-            🕒 Horario de reservas: Lunes a Domingo de 12:00 a 23:00.
+            Ubicación: Humahuaca 4556, C1192 Cdad. Autónoma de Buenos Aires.
+            Horario de reservas: Lunes a Domingo de 12:00 a 23:00.
 
-            🔹 **Tu tarea**:
-            - Mantén una conversación amigable con el cliente.
-            - Si falta información, sigue la conversación y **pregunta lo necesario**.
-            - Interpreta fechas como "mañana", "el viernes", "el próximo martes" y conviértelas en formato **YYYY/MM/DD HH:MM:SS**.
-            - Si es la primera vez que el cliente habla, salúdalo de manera amigable antes de pedir detalles.
+            Reglas estrictas:
+            Siempre responde solo con JSON válido, sin texto adicional.
+            No uses signos de exclamación, emojis ni saludos fuera del JSON.
+            Si falta información, usa "pendiente" en los campos correspondientes.
+            Interpreta fechas como "mañana", "el viernes", "el próximo martes" y conviértelas a YYYY/MM/DD HH:MM:SS.
             
-            📌 **Formato esperado (Ejemplo)**:
+            Formato esperado (Ejemplo):
             {
               "response": "Hola! ¿Para qué fecha y hora quieres reservar?",
               "name": "Juan Pérez",
               "startDate": "2025/02/20 17:30:00"
-            }`
+            }
+              
+             No agregues texto fuera del JSON, responde solo con JSON puro.
+             `
           },
           { role: 'user', content: message }
         ],
@@ -43,17 +46,11 @@ export class AiService {
       console.log('🤖 Respuesta de IA:', response.choices[0]?.message?.content);
 
       try {
-        const parsedResponse = JSON.parse(response.choices[0]?.message?.content || '{}');
-
-        return {
-          response: parsedResponse.response || "Lo siento, no entendí. ¿Podrías darme más detalles?",
-          name: parsedResponse.name || 'pendiente',
-          startDate: parsedResponse.startDate || 'pendiente',
-        };
+        return JSON.parse(response.choices[0]?.message?.content || '{}');
       } catch (error) {
         console.error('❌ Error parseando la respuesta de la IA:', error);
         return {
-          response: "Lo siento, no entendí. ¿Podrías darme más detalles?",
+          response: `Hola, ¿Para qué fecha y hora quieres reservar?`,
           name: 'pendiente',
           startDate: 'pendiente',
         };

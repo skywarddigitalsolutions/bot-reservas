@@ -35,10 +35,8 @@ export class WhatsAppService {
     // Responder con el mensaje de la IA (ejemplo: "Hola! ¿Para qué fecha y hora quieres reservar?")
     await this.sendMessage(from, reserva.response);
 
-    if (reserva.startDate === "pendiente") {
-      return; // Si falta info, el usuario seguirá conversando
-    }
-
+    if (reserva.startDate === "pendiente") return;
+    
     // Verificar disponibilidad en Google Sheets
     const disponible = await this.verificarDisponibilidad(reserva.startDate);
 

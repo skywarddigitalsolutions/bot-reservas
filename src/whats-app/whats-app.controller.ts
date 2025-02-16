@@ -16,7 +16,7 @@ export class WhatsAppController {
   async handleIncomingMessage(@Body() body: any) {
     console.log('📩 Mensaje recibido:', body);
 
-    const from = body.From; // Número del usuario
+    const from = body.From;
     const message = body.Body; // Mensaje enviado
 
     const responseMessage = await this.whatsappService.processMessage(from, message);
