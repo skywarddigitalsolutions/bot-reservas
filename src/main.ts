@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 async function bootstrap() {
-  console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
   const app = await NestFactory.create(AppModule);
   await app.listen(process.env.PORT ?? 3000);
 }
