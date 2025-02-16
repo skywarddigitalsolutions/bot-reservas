@@ -14,7 +14,7 @@ export class AiService {
   async getReservationDetails(message: string, userName: string): Promise<{ response: string; name: string; startDate: string }> {
     try {
       const today = new Date();
-      const todayFormatted = today.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+      const todayFormatted = today.toISOString().split('T')[0];
 
       const response = await this.openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -43,9 +43,9 @@ export class AiService {
             
             ⚠️ **Reglas importantes**:
             - NO agregues texto fuera del JSON.
-            - Si el usuario no menciona su nombre, usa "${userName}".
-            - Si el usuario no menciona la fecha, devuelve "pendiente" en "startDate".
-            - Si el usuario no menciona la hora, devuelve "pendiente" en "startDate".
+            - Si el usuario no menciona su nombre, pideselo.
+            - Si el usuario no menciona la fecha, preguntale para que fecha quiere y devuelve "pendiente" en "startDate".
+            - Si el usuario no menciona la hora, preguntale para que hora quiere y devuelve "pendiente" en "startDate".
             - NO uses respuestas robóticas, mantén un tono conversacional y amable.`
           },
           { role: 'user', content: message }

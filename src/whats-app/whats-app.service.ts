@@ -31,7 +31,7 @@ export class WhatsAppService {
     console.log(`🤖 Procesando mensaje de ${from}: "${message.Body}"`);
 
     // Obtener el nombre del usuario desde Twilio
-    const userName = message.ProfileName || 'pendiente';
+    const userName = message.Body.ProfileName || 'pendiente';
 
     const reserva = await this.aiService.getReservationDetails(message.Body, userName);
 
