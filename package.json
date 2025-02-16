@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "install": "npm install --omit=dev",
     "build": "node --max-old-space-size=2048 node_modules/.bin/nest build",
     "prestart": "npm run build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
