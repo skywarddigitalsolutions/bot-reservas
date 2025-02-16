@@ -27,16 +27,21 @@ export class WhatsAppService {
     }
   }
 
-  async processMessage(from: string, message: string): Promise<void> {
-    console.log(`🤖 Procesando mensaje de ${from}: "${message}"`);
+  async processMessage(from: string, message: any): Promise<void> {
+    console.log(`🤖 Procesando mensaje de ${from}: "${message.Body}"`);
 
-    const reserva = await this.aiService.getReservationDetails(message);
+    // Obtener el nombre del usuario desde Twilio
+    const userName = message.ProfileName || 'pendiente';
 
-    // Responder con el mensaje de la IA (ejemplo: "Hola! ¿Para qué fecha y hora quieres reservar?")
+    const reserva = await this.aiService.getReservationDetails(message.Body, userName);
+
+    // Responder con el mensaje de la IA (ejemplo: "Hola Juan! ¿Para qué fecha y hora quieres reservar?")
     await this.sendMessage(from, reserva.response);
 
-    if (reserva.startDate === "pendiente") return;
-    
+    if (reserva.startDate === "pendiente") {
+      return; // Si falta info, el usuario seguirá conversando
+    }
+
     // Verificar disponibilidad en Google Sheets
     const disponible = await this.verificarDisponibilidad(reserva.startDate);
 
@@ -46,10 +51,10 @@ export class WhatsAppService {
     }
 
     // Confirmar la reserva en Google Sheets
-    const confirmacion = await this.confirmarReserva(reserva.name, reserva.startDate);
+    const confirmacion = await this.confirmarReserva(userName, reserva.startDate);
 
     if (confirmacion) {
-      await this.sendMessage(from, `✅ ¡Reserva confirmada!\n📌 Cliente: ${reserva.name}\n📅 Fecha: ${reserva.startDate}`);
+      await this.sendMessage(from, `✅ ¡Reserva confirmada!\n📌 Cliente: ${userName}\n📅 Fecha: ${reserva.startDate}`);
     } else {
       await this.sendMessage(from, 'Hubo un problema al registrar tu reserva. Inténtalo nuevamente.');
     }
