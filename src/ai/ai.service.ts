@@ -71,6 +71,14 @@ export class AiService {
 
       // 6️⃣ Parsear la respuesta como JSON
       try {
+        if( typeof assistantMessage === 'string') {
+          return {
+            response: assistantMessage,
+            name: userName || 'pendiente',
+            startDate: 'pendiente',
+            threadId: threadId || '',
+          };
+        }
         const parsedResponse = JSON.parse(assistantMessage);
         return { ...parsedResponse, threadId };
       } catch (error) {
