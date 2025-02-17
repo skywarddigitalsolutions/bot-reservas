@@ -54,6 +54,9 @@ export class AiService {
       // 5️⃣ Obtener la respuesta del Assistant
       const messages = await this.openai.beta.threads.messages.list(threadId);
 
+      console.log('messages', messages);
+      console.log('messages --> ', JSON.stringify(messages));
+
       // Filtrar solo los mensajes de texto
       const assistantMessage = messages.data
         .filter(msg => msg.role === 'assistant')
@@ -68,6 +71,14 @@ export class AiService {
 
       // 6️⃣ Parsear la respuesta como JSON
       try {
+        if(!assistantMessage.startsWith('{') || !assistantMessage.endsWith('}')){
+          return {
+            response: assistantMessage,
+            name: userName || 'pendiente',
+            startDate: 'pendiente',
+            threadId: threadId || '',
+          };
+        }
         const parsedResponse = JSON.parse(assistantMessage);
         return { ...parsedResponse, threadId };
       } catch (error) {
