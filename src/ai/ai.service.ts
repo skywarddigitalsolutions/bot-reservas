@@ -50,7 +50,7 @@ export class AiService {
           },
           { role: 'user', content: message }
         ],
-        temperature: 0.7, // Mayor creatividad para respuestas más naturales
+        temperature: 0.7,
       });
 
       console.log('🤖 Respuesta de IA:', response.choices[0]?.message?.content);

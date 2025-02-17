@@ -15,9 +15,8 @@ export class WhatsAppController {
   @Post('webhook')
   async handleIncomingMessage(@Body() body: any) {
     const from = body.From;
-    const message = body.Body;
 
-    const responseMessage = await this.whatsappService.processMessage(from, message);
+    const responseMessage = await this.whatsappService.processMessage(from, body);
 
     return { success: true, response: responseMessage };
   }
