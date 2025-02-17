@@ -6,12 +6,15 @@ import axios from 'axios';
 @Injectable()
 export class WhatsAppService {
   private twilioClient: Twilio;
+  private userThreads: Map<string, string>; // Almacenar el threadId de cada usuario
 
   constructor(private readonly aiService: AiService) {
     this.twilioClient = new Twilio(
       process.env.TWILIO_ACCOUNT_SID,
       process.env.TWILIO_AUTH_TOKEN
     );
+
+    this.userThreads = new Map(); // Inicializar almacenamiento de threads
   }
 
   async sendMessage(to: string, message: string): Promise<void> {
@@ -28,19 +31,24 @@ export class WhatsAppService {
   }
 
   async processMessage(from: string, message: any): Promise<void> {
-    console.log(`🤖 Procesando mensaje de ${from}: "${message}"`);
+    console.log(`🤖 Procesando mensaje de ${from}: "${JSON.stringify(message, null, 2)}"`);
 
-    // Obtener el nombre del usuario desde Twilio
     const userName = message.ProfileName || 'pendiente';
 
-    const reserva = await this.aiService.getReservationDetails(message.Body, userName);
+    // Obtener el threadId del usuario o crear uno nuevo
+    let threadId = this.userThreads.get(from) || null;
 
-    // Responder con el mensaje de la IA (ejemplo: "Hola Juan! ¿Para qué fecha y hora quieres reservar?")
+    const reserva = await this.aiService.getReservationDetails(message.Body, userName, threadId);
+
+    // Si se creó un nuevo thread, almacenarlo
+    if (!threadId) {
+      this.userThreads.set(from, reserva.threadId);
+    }
+
+    // Responder con el mensaje de la IA
     await this.sendMessage(from, reserva.response);
 
-    if (reserva.startDate === "pendiente") {
-      return; // Si falta info, el usuario seguirá conversando
-    }
+    if (reserva.startDate === "pendiente") return; 
 
     // Verificar disponibilidad en Google Sheets
     const disponible = await this.verificarDisponibilidad(reserva.startDate);

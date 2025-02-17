@@ -4,66 +4,79 @@ import OpenAI from 'openai';
 @Injectable()
 export class AiService {
   private openai: OpenAI;
+  private assistantId: string;
 
   constructor() {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+
+    this.assistantId = process.env.OPENAI_ASSISTANT_ID || '';
   }
 
-  async getReservationDetails(message: string, userName: string): Promise<{ response: string; name: string; startDate: string }> {
+  async getReservationDetails(
+    message: string, 
+    userName: string, 
+    threadId: string | null = null
+  ): Promise<{ response: string; name: string; startDate: string; threadId: string }> {
     try {
-      const today = new Date();
-      const todayFormatted = today.toISOString().split('T')[0];
+      console.log(`📩 Enviando mensaje al Assistant: ${message}`);
 
-      const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: `Sos un asistente de reservas automatizado para Bethania Fútbol Club.
-            Ubicación: Humahuaca 4556, C1192 Cdad. Autónoma de Buenos Aires.
-            Horario de reservas: Lunes a Domingo de 08:00 a 23:00.
+      // 1️⃣ Si no hay un thread, crear uno nuevo
+      if (!threadId) {
+        const thread = await this.openai.beta.threads.create();
+        threadId = thread.id;
+      }
 
-            Tu objetivo: Guiar a los clientes a completar una reserva de manera natural y conversacional.
-            Mantén la conversación y haz preguntas cuando falte información.
-            Entiende fechas relativas como "mañana" (mañana es ${todayFormatted}), "el viernes", "el próximo martes" y conviértelas a YYYY/MM/DD HH:MM:SS.
-            Ejemplo de flujo de conversación:
-              - Usuario: "Hola"
-              - Asistente: "Hola ${userName}, ¿cómo estás? ¿Quieres reservar una cancha hoy o en otra fecha?"
-              - Usuario: "Para mañana a las 19:00"
-              - Asistente: "¡Perfecto! Entonces reservaré una cancha para ti el ${todayFormatted} a las 19:00. ¿Es correcto?"
-            
-            Formato de respuesta (debes responder solo en JSON sin texto adicional):
-            {
-              "response": "Texto de la respuesta del bot",
-              "name": "Juan Pérez",
-              "startDate": "2025/02/20 17:30:00"
-            }
-            
-            Reglas importantes:
-            NO agregues texto fuera del JSON.
-            Si el usuario no menciona su nombre, pideselo.
-            Si el usuario no menciona la fecha, preguntale para que fecha quiere y devuelve "pendiente" en "startDate".
-            Si el usuario no menciona la hora, preguntale para que hora quiere y devuelve "pendiente" en "startDate".
-            NO uses respuestas robóticas, mantén un tono conversacional y amable.`
-          },
-          { role: 'user', content: message }
-        ],
-        temperature: 0.7,
+      // 2️⃣ Agregar el mensaje al thread
+      await this.openai.beta.threads.messages.create(threadId, {
+        role: 'user',
+        content: message,
       });
 
-      console.log('🤖 Respuesta de IA:', response.choices[0]?.message?.content);
+      // 3️⃣ Ejecutar la corrida del asistente y esperar respuesta automáticamente
+      const run = await this.openai.beta.threads.runs.createAndPoll(threadId, {
+        assistant_id: this.assistantId,
+        instructions: `El usuario se llama ${userName}. Responde SOLO en formato JSON.`,
+      });
 
-      // Intentamos parsear la respuesta como JSON válido
+      // 4️⃣ Si la respuesta no se completó, devolver un mensaje genérico
+      if (run.status !== 'completed') {
+        console.error('❌ El Assistant tardó demasiado en responder.');
+        return {
+          response: `Hola ${userName}, no pude obtener una respuesta en este momento. Inténtalo nuevamente.`,
+          name: userName || 'pendiente',
+          startDate: 'pendiente',
+          threadId,
+        };
+      }
+
+      // 5️⃣ Obtener la respuesta del Assistant
+      const messages = await this.openai.beta.threads.messages.list(threadId);
+
+      // Filtrar solo los mensajes de texto
+      const assistantMessage = messages.data
+        .filter(msg => msg.role === 'assistant')
+        .map(msg => {
+          const textContent = msg.content.find(c => c.type === 'text'); // Filtrar solo contenido de tipo texto
+          return textContent ? textContent.text.value : null;
+        })
+        .filter(msg => msg !== null) // Remover mensajes nulos
+        .reverse()[0] || '{}';
+
+      console.log('🤖 Respuesta del Assistant:', assistantMessage);
+
+      // 6️⃣ Parsear la respuesta como JSON
       try {
-        return JSON.parse(response.choices[0]?.message?.content || '{}');
+        const parsedResponse = JSON.parse(assistantMessage);
+        return { ...parsedResponse, threadId };
       } catch (error) {
         console.error('❌ Error parseando la respuesta de la IA:', error);
         return {
           response: `Hola ${userName}, ¿para qué fecha y hora quieres reservar?`,
           name: userName || 'pendiente',
           startDate: 'pendiente',
+          threadId,
         };
       }
 
@@ -73,6 +86,7 @@ export class AiService {
         response: `Hola ${userName}, ¿para qué fecha y hora quieres reservar?`,
         name: userName || 'pendiente',
         startDate: 'pendiente',
+        threadId: threadId || '',
       };
     }
   }
