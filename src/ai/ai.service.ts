@@ -34,10 +34,10 @@ export class AiService {
         content: message,
       });
 
-      // 3️⃣ Ejecutar la corrida del asistente y esperar respuesta automáticamente
+      // 3️⃣ Ejecutar la corrida del asistente con la instrucción corregida
       const run = await this.openai.beta.threads.runs.createAndPoll(threadId, {
         assistant_id: this.assistantId,
-        instructions: `El usuario se llama ${userName}. Responde SOLO en formato JSON.`,
+        instructions: `RESPONDE SOLO EN JSON. NO AGREGUES SALUDOS NI TEXTO FUERA DEL JSON.`
       });
 
       // 4️⃣ Si la respuesta no se completó, devolver un mensaje genérico
@@ -54,31 +54,31 @@ export class AiService {
       // 5️⃣ Obtener la respuesta del Assistant
       const messages = await this.openai.beta.threads.messages.list(threadId);
 
-      console.log('messages', messages);
-      console.log('messages -->', JSON.stringify(messages));
-
       // Filtrar solo los mensajes de texto
       const assistantMessage = messages.data
         .filter(msg => msg.role === 'assistant')
         .map(msg => {
-          const textContent = msg.content.find(c => c.type === 'text'); // Filtrar solo contenido de tipo texto
+          const textContent = msg.content.find(c => c.type === 'text');
           return textContent ? textContent.text.value : null;
         })
-        .filter(msg => msg !== null) // Remover mensajes nulos
+        .filter(msg => msg !== null)
         .reverse()[0] || '{}';
 
       console.log('🤖 Respuesta del Assistant:', assistantMessage);
 
-      // 6️⃣ Parsear la respuesta como JSON
+      // 🚨 Validar antes de parsear
+      if (!assistantMessage.startsWith('{') || !assistantMessage.endsWith('}')) {
+        console.error('❌ La respuesta del Assistant NO es un JSON válido.');
+        return {
+          response: `Hola ${userName}, ¿para qué fecha y hora quieres reservar?`,
+          name: userName || 'pendiente',
+          startDate: 'pendiente',
+          threadId,
+        };
+      }
+
+      // 6️⃣ Intentar parsear la respuesta como JSON
       try {
-        if( typeof assistantMessage === 'string') {
-          return {
-            response: assistantMessage,
-            name: userName || 'pendiente',
-            startDate: 'pendiente',
-            threadId: threadId || '',
-          };
-        }
         const parsedResponse = JSON.parse(assistantMessage);
         return { ...parsedResponse, threadId };
       } catch (error) {
