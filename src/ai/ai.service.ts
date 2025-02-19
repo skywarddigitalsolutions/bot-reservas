@@ -21,28 +21,25 @@ export class AiService {
   ): Promise<{ response: string; name: string; startDate: string; threadId: string }> {
     try {
       console.log(`📩 Enviando mensaje al Assistant: ${message}`);
-
-      // 1️⃣ Si no hay un thread, crear uno nuevo
+  
+      // 1️⃣ Crear un nuevo thread si no existe
       if (!threadId) {
         const thread = await this.openai.beta.threads.create();
         threadId = thread.id;
       }
-
+  
       // 2️⃣ Agregar el mensaje al thread
       await this.openai.beta.threads.messages.create(threadId, {
         role: 'user',
         content: message,
       });
-
-      // 3️⃣ Ejecutar la corrida del asistente con la instrucción corregida
+  
+      // 3️⃣ Ejecutar el Assistant
       const run = await this.openai.beta.threads.runs.createAndPoll(threadId, {
         assistant_id: this.assistantId,
-        instructions: `RESPONDE SOLO EN JSON. NO AGREGUES SALUDOS NI TEXTO FUERA DEL JSON.`
+        instructions: `Devuelve la respuesta ÚNICAMENTE en formato JSON. No incluyas saludos, explicaciones ni texto adicional fuera del JSON. La estructura debe ser: {"response":"texto","name":"nombre","startDate":"YYYY-MM-DDTHH:MM:SSZ","threadId":"id"}.`
       });
-
-      console.log("------------ run ------------", run)
-
-      // 4️⃣ Si la respuesta no se completó, devolver un mensaje genérico
+  
       if (run.status !== 'completed') {
         console.error('❌ El Assistant tardó demasiado en responder.');
         return {
@@ -52,41 +49,31 @@ export class AiService {
           threadId,
         };
       }
-
-      // 5️⃣ Obtener la respuesta del Assistant
+  
+      // 4️⃣ Obtener los mensajes
       const messages = await this.openai.beta.threads.messages.list(threadId);
-
-      console.log("------------ messages ------------", messages)
-
-      // Filtrar solo los mensajes de texto
-      const assistantMessage = messages.data
+  
+      const assistantMessages = messages.data
         .filter(msg => msg.role === 'assistant')
-        .map(msg => {
-          const textContent = msg.content.find(c => c.type === 'text');
-          return textContent ? textContent.text.value : null;
-        })
-        .filter(msg => msg !== null)
-        .reverse()[0] || '{}';
-
+        .map(msg => msg.content.find(c => c.type === 'text')?.text?.value || null)
+        .filter(Boolean);
+  
+      const assistantMessage = assistantMessages.pop() || '{}';
+  
       console.log('🤖 Respuesta del Assistant:', assistantMessage);
-
-      // 🚨 Validar antes de parsear
-      if (!assistantMessage.startsWith('{') || !assistantMessage.endsWith('}')) {
+  
+      // 5️⃣ Validar y parsear JSON
+      const isValidJson = (str: string) => {
+        try {
+          const json = JSON.parse(str);
+          return typeof json === 'object' && json !== null;
+        } catch {
+          return false;
+        }
+      };
+  
+      if (!isValidJson(assistantMessage)) {
         console.error('❌ La respuesta del Assistant NO es un JSON válido.');
-        return {
-          response: assistantMessage,
-          name: userName || 'pendiente',
-          startDate: 'pendiente',
-          threadId,
-        };
-      }
-
-      // 6️⃣ Intentar parsear la respuesta como JSON
-      try {
-        const parsedResponse = JSON.parse(assistantMessage);
-        return { ...parsedResponse, threadId };
-      } catch (error) {
-        console.error('❌ Error parseando la respuesta de la IA:', error);
         return {
           response: `Hola ${userName}, ¿para qué fecha y hora quieres reservar?`,
           name: userName || 'pendiente',
@@ -94,7 +81,10 @@ export class AiService {
           threadId,
         };
       }
-
+  
+      const parsedResponse = JSON.parse(assistantMessage);
+      return { ...parsedResponse, threadId };
+  
     } catch (error) {
       console.error('❌ Error con la IA:', error);
       return {
@@ -105,4 +95,5 @@ export class AiService {
       };
     }
   }
+  
 }
