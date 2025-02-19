@@ -83,10 +83,10 @@ export class AiService {
 
         const parsedResponse = JSON.parse(assistantMessage);
 
-        // ✅ Nueva validación: Si no hay fecha ni nombre, responder de forma más general
-        if (!parsedResponse.name || parsedResponse.name === "pendiente" || !parsedResponse.startDate || parsedResponse.startDate === "pendiente") {
-            parsedResponse.response = `Hola ${userName}, ¿para qué fecha y hora te gustaría reservar la cancha?`;
-        }
+          // ✅ Nueva validación: Si no hay fecha ni nombre, responder de forma más general
+          if (!parsedResponse.name || parsedResponse.name === "pendiente" || !parsedResponse.startDate || parsedResponse.startDate === "pendiente") {
+              parsedResponse.response = `Hola ${userName}, ¿para qué fecha y hora te gustaría reservar la cancha?`;
+          }
 
         return { ...parsedResponse, threadId };
 

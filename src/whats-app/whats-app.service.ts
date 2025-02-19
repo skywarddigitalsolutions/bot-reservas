@@ -34,27 +34,23 @@ export class WhatsAppService {
     console.log(`🤖 Procesando mensaje de ${from}: "${JSON.stringify(message, null, 2)}"`);
 
     const userName = message.ProfileName || 'pendiente';
-
-    // Obtener el threadId del usuario o crear uno nuevo
     let threadId = this.userThreads.get(from) || null;
 
+    // 🗂️ Obtener detalles de la conversación actual
     const reserva = await this.aiService.getReservationDetails(message.Body, userName, threadId);
 
-    // Si se creó un nuevo thread, almacenarlo
+    // Guardar el threadId si es nuevo
     if (!threadId) {
         this.userThreads.set(from, reserva.threadId);
     }
 
-    // Responder con el mensaje de la IA
-    await this.sendMessage(from, reserva.response);
-
-    // 👉 NUEVA VALIDACIÓN: No verificar disponibilidad si faltan datos
+    // 💬 Si aún falta información, seguir conversando sin intentar reservar
     if (!reserva.name || reserva.name === "pendiente" || !reserva.startDate || reserva.startDate === "pendiente") {
-        console.log('⚠️ Datos incompletos, no se realiza la verificación de disponibilidad.');
-        return;  // Salir de la función si faltan datos
+        await this.sendMessage(from, reserva.response);
+        return;
     }
 
-    // Verificar disponibilidad en Google Sheets
+    // ✅ Si ya se tienen los datos necesarios, verificar disponibilidad
     const disponible = await this.verificarDisponibilidad(reserva.startDate);
 
     if (!disponible) {
@@ -62,7 +58,7 @@ export class WhatsAppService {
         return;
     }
 
-    // Confirmar la reserva en Google Sheets
+    // Confirmar la reserva
     const confirmacion = await this.confirmarReserva(userName, reserva.startDate);
 
     if (confirmacion) {
@@ -70,7 +66,8 @@ export class WhatsAppService {
     } else {
         await this.sendMessage(from, 'Hubo un problema al registrar tu reserva. Inténtalo nuevamente.');
     }
-}
+  }
+
 
 
   async verificarDisponibilidad(fecha: string): Promise<boolean> {
