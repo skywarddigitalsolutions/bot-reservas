@@ -1,5 +1,3 @@
-// src/twilio/twilio.service.ts
-
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenaiService } from '../openai/openai.service';
 import axios from 'axios';
@@ -7,8 +5,8 @@ import * as Twilio from 'twilio';
 
 @Injectable()
 export class TwilioService {
-  private readonly logger = new Logger(TwilioService.name); // ✅ Logger de NestJS
-  private conversations = new Map<string, { name: string; startDate: string }>();
+  private readonly logger = new Logger(TwilioService.name);
+  private conversations = new Map<string, { threadId: string; name: string; startDate: string }>();
   private client: Twilio.Twilio; 
   private fromNumber: string;
   private toNumber: string;
@@ -18,21 +16,26 @@ export class TwilioService {
     this.client = Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     this.fromNumber = process.env.TWILIO_PHONE_NUMBER_FROM || '';
     this.toNumber = process.env.TWILIO_PHONE_NUMBER_TO || '';
-    this.logger.debug(`Twilio configurado con fromNumber: ${this.fromNumber}, toNumber: ${this.toNumber}`);
   }
 
   async processUserMessage(message: string, from: string): Promise<void> {
     this.logger.log(`Procesando mensaje de ${from}: ${message}`);
-    const conversation = this.conversations.get(from) || { name: 'pendiente', startDate: 'pendiente' };
+    let conversation = this.conversations.get(from);
+
+    if (!conversation) {
+      this.logger.log(`No se encontró un thread para el usuario ${from}. Creando uno nuevo.`);
+      const threadId = await this.openaiService.createThread();
+      conversation = { threadId, name: 'pendiente', startDate: 'pendiente' };
+      this.conversations.set(from, conversation);
+    }
 
     try {
-      const responseJson = await this.openaiService.getAssistantResponse(message);
+      const responseJson = await this.openaiService.getAssistantResponse(message, conversation.threadId);
       this.logger.debug(`Respuesta del asistente: ${JSON.stringify(responseJson)}`);
 
       conversation.name = responseJson.name || conversation.name;
       conversation.startDate = responseJson.startDate || conversation.startDate;
 
-      this.conversations.set(from, conversation);
       this.logger.debug(`Estado de la conversación actual: ${JSON.stringify(conversation)}`);
 
       let reply: string;
@@ -66,10 +69,8 @@ export class TwilioService {
     try {
       const response = await axios.get('https://hook.us2.make.com/2humbq3b0fgdg5oy3c9drka89thrltat');
       const reservations = response.data;
-      this.logger.debug(`Reservas existentes: ${JSON.stringify(reservations)}`);
 
       const dateToCheck = new Date(startDate).toISOString().split('T')[0];
-      this.logger.debug(`Fecha formateada para comparación: ${dateToCheck}`);
 
       const isAvailable = !reservations.some((r) => {
         const date = new Date((r.date - 25569) * 86400 * 1000).toISOString().split('T')[0];
