@@ -40,6 +40,8 @@ export class AiService {
         instructions: `RESPONDE SOLO EN JSON. NO AGREGUES SALUDOS NI TEXTO FUERA DEL JSON.`
       });
 
+      console.log("------------ run ------------", run)
+
       // 4️⃣ Si la respuesta no se completó, devolver un mensaje genérico
       if (run.status !== 'completed') {
         console.error('❌ El Assistant tardó demasiado en responder.');
@@ -53,6 +55,8 @@ export class AiService {
 
       // 5️⃣ Obtener la respuesta del Assistant
       const messages = await this.openai.beta.threads.messages.list(threadId);
+
+      console.log("------------ messages ------------", messages)
 
       // Filtrar solo los mensajes de texto
       const assistantMessage = messages.data
