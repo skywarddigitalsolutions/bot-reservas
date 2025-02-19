@@ -70,7 +70,7 @@ export class AiService {
       if (!assistantMessage.startsWith('{') || !assistantMessage.endsWith('}')) {
         console.error('❌ La respuesta del Assistant NO es un JSON válido.');
         return {
-          response: message,
+          response: assistantMessage,
           name: userName || 'pendiente',
           startDate: 'pendiente',
           threadId,
