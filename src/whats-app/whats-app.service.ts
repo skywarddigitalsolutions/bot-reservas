@@ -42,31 +42,36 @@ export class WhatsAppService {
 
     // Si se creó un nuevo thread, almacenarlo
     if (!threadId) {
-      this.userThreads.set(from, reserva.threadId);
+        this.userThreads.set(from, reserva.threadId);
     }
 
     // Responder con el mensaje de la IA
     await this.sendMessage(from, reserva.response);
 
-    if (reserva.startDate === "pendiente") return; 
+    // 👉 NUEVA VALIDACIÓN: No verificar disponibilidad si faltan datos
+    if (!reserva.name || reserva.name === "pendiente" || !reserva.startDate || reserva.startDate === "pendiente") {
+        console.log('⚠️ Datos incompletos, no se realiza la verificación de disponibilidad.');
+        return;  // Salir de la función si faltan datos
+    }
 
     // Verificar disponibilidad en Google Sheets
     const disponible = await this.verificarDisponibilidad(reserva.startDate);
 
     if (!disponible) {
-      await this.sendMessage(from, `Lo siento, pero no hay disponibilidad para ${reserva.startDate}. ¿Te gustaría probar otro horario?`);
-      return;
+        await this.sendMessage(from, `Lo siento, pero no hay disponibilidad para ${reserva.startDate}. ¿Te gustaría probar otro horario?`);
+        return;
     }
 
     // Confirmar la reserva en Google Sheets
     const confirmacion = await this.confirmarReserva(userName, reserva.startDate);
 
     if (confirmacion) {
-      await this.sendMessage(from, `✅ ¡Reserva confirmada!\n📌 Cliente: ${userName}\n📅 Fecha: ${reserva.startDate}`);
+        await this.sendMessage(from, `✅ ¡Reserva confirmada!\n📌 Cliente: ${userName}\n📅 Fecha: ${reserva.startDate}`);
     } else {
-      await this.sendMessage(from, 'Hubo un problema al registrar tu reserva. Inténtalo nuevamente.');
+        await this.sendMessage(from, 'Hubo un problema al registrar tu reserva. Inténtalo nuevamente.');
     }
-  }
+}
+
 
   async verificarDisponibilidad(fecha: string): Promise<boolean> {
     try {
