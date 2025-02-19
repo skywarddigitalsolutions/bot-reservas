@@ -70,7 +70,7 @@ export class AiService {
       if (!assistantMessage.startsWith('{') || !assistantMessage.endsWith('}')) {
         console.error('❌ La respuesta del Assistant NO es un JSON válido.');
         return {
-          response: `Hola ${userName}, ¿para qué fecha y hora quieres reservar?`,
+          response: message,
           name: userName || 'pendiente',
           startDate: 'pendiente',
           threadId,
