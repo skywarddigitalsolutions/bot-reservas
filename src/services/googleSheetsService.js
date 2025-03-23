@@ -41,7 +41,7 @@ const appendToSheet = async (data) => {
     }
 }
 
-export const checkAvailability = async (date) => {
+export const checkAvailability = async (date,time) => {
     try {
         const auth = new google.auth.GoogleAuth({
             keyFile: path.join(process.cwd(), 'src/credentials', 'credentials.json'),
@@ -66,15 +66,21 @@ export const checkAvailability = async (date) => {
 
         // Normalizar y comparar las fechas
         const formattedDate = formatDate(date);
-        const dateValues = values.flat().map(formatDate);
+        const formattedTime = formatTime(time);
+        const data = [formattedDate, formattedTime, 'si'];
+        const validation = !values.some(row => JSON.stringify(row) === JSON.stringify(data));
 
-        return !dateValues.includes(formattedDate);
+        return validation;
     } catch (error) {
         console.error('Error checking availability:', error);
         return false;
     }
 };
 
+// Función para formatear la hora correctamente
+const formatTime = (time) => {
+    return time.trim().padStart(5, '0'); // Asegura que tenga el formato "HH:mm"
+};
 
 const formatDate = (date) => {
     if (typeof date !== 'string') return '';
