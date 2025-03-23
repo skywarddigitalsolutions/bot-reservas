@@ -2,7 +2,7 @@ import axios from 'axios';
 import config from '../config/env.js';
 
 class WhatsAppService {
-  async sendMessage(to, body, messageId) {
+  async sendMessage(to, body) {
     try {
       await axios({
         method: 'POST',
@@ -13,10 +13,7 @@ class WhatsAppService {
         data: {
           messaging_product: 'whatsapp',
           to,
-          text: { body }/* ,
-          context: {
-            message_id: messageId,
-          }, */
+          text: { body }
         },
       });
     } catch (error) {

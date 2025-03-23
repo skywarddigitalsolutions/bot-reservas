@@ -12,7 +12,7 @@ class MessageHandler {
     const fromNumber = formatPhoneNumber(message.from);
     const incomingMessage = message?.text?.body.toLowerCase().trim();
     console.log(
-      "this.appointmentState[fromNumber] ",
+      "STATE -> ",
       this.appointmentState[fromNumber]
     );
     if (message?.type === "text") {
@@ -33,7 +33,9 @@ class MessageHandler {
         .trim();
       let response = "";
       if (option == "si") {
-        response = this.completeAppointment(fromNumber, message.id);
+        if (this.appointmentState[fromNumber].step) this.appointmentState[fromNumber].step = "confirm";
+        await this.handleAppointmentFlow(fromNumber, incomingMessage);
+        await whatsappService.markAsRead(message.id);
       } else if (option == "no") {
         response =
           "Tu reserva no fue confirmada, gracias por comunicarte con nosotros. Si deseas realizar otra reserva, vuelve a escribirnos.";
@@ -114,8 +116,7 @@ class MessageHandler {
       case "start":
         state.name = message;
         state.step = "date";
-        response =
-          "Por favor ingrese la dia y horario de la reserva (dd/mm/aaaa - hh:mm)";
+        response = "Por favor ingrese la dia y horario de la reserva (dd/mm/aaaa - hh:mm)";
         break;
       case "date": {
         const available = await this.handleAssistantFlow(to, message);
@@ -139,6 +140,9 @@ class MessageHandler {
         }
         return;
       }
+      case "confirm":
+        await this.completeAppointment(to);
+        break;
       default:
         response = "Opcion no valida, por favor elija una opcion valida";
         break;
@@ -170,7 +174,7 @@ class MessageHandler {
     state.time = response.time;
 
     await this.sendConfirmMenu(to, "Desea confirmar la reserva?");
-    state.step = "confirm";
+    state.step = "confirm"
 
     return true;
   }
@@ -195,13 +199,11 @@ class MessageHandler {
     }
   }
 
-  async completeAppointment(to, messageId) {
+  async completeAppointment(to) {
     const appointmentData = this.appointmentState[to];
 
     if (!appointmentData) {
-      console.error(
-        `Error: No se encontró información de la reserva para ${to}`
-      );
+      console.error(`Error: No se encontró información de la reserva para ${to}`);
       return "Error al completar la reserva. Por favor, intenta nuevamente.";
     }
 
@@ -218,9 +220,10 @@ class MessageHandler {
 
     const response = `Gracias por reservar, ${appointmentData.name}. Tu reserva está agendada para el ${userData[2]} a las ${userData[3]}.`;
 
-    await whatsappService.sendMessage(to, response, messageId);
-
-    //appendToSheet(userData);
+    //GUARDA LA RESERVA EN EL EXCEL
+    await appendToSheet(userData);
+    
+    await whatsappService.sendMessage(to, response);
   }
 
   isGreeting(message) {
